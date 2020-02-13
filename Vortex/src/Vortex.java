@@ -1,4 +1,5 @@
 import java.awt.Color;
+import java.awt.Dimension;
 import java.awt.EventQueue;
 import javax.swing.JOptionPane;
 import javax.swing.ImageIcon;
@@ -9,6 +10,7 @@ import javax.swing.JLabel;
 import javax.swing.JPanel;
 import java.awt.Font;
 import javax.swing.SwingConstants;
+import javax.swing.UnsupportedLookAndFeelException;
 
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
@@ -67,11 +69,32 @@ public class Vortex {
 	public static void main(String[] args) {
 		EventQueue.invokeLater(new Runnable() {
 			public void run() {
+				// Set Nimbus Look and Feel
+				boolean boolNimbus = false;
+				for (javax.swing.UIManager.LookAndFeelInfo info : javax.swing.UIManager.getInstalledLookAndFeels()) {
+					if ("Nimbus".equals(info.getName())) {
+						try {
+							javax.swing.UIManager.setLookAndFeel(info.getClassName());
+						} catch (ClassNotFoundException | InstantiationException | IllegalAccessException
+								| UnsupportedLookAndFeelException e) {
+							JOptionPane.showMessageDialog(null, "Could not start the application with the preferred look and feel.\nUsing system defaults.", "Vortex", JOptionPane.ERROR_MESSAGE, null);
+						}
+						
+						boolNimbus = true;
+				        break;
+					}
+			    }
+				
+				if (!boolNimbus) {
+					JOptionPane.showMessageDialog(null, "Could not start the application with the preferred look and feel.\nUsing system defaults.", "Vortex", JOptionPane.ERROR_MESSAGE, null);
+				}
+				
 				try {
 					Vortex window = new Vortex();
 					window.frmVortex.setVisible(true);
 				} catch (Exception e) {
-					e.printStackTrace();
+					JOptionPane.showMessageDialog(null, "Could not start the application. Exiting.", "Vortex", JOptionPane.ERROR_MESSAGE, null);
+					System.exit(1);
 				}
 			}
 		});
@@ -434,12 +457,14 @@ public class Vortex {
 		frmVortex.setResizable(false);
 		frmVortex.setTitle("Vortex");
 		if (intBoardSize < 3) {
-			frmVortex.setBounds(100, 100, 500 + (intBoardSize - 3) * 62, 300);
+			frmVortex.getContentPane().setPreferredSize(new Dimension(508 + (intBoardSize - 3) * 62, 280));
 		} else {
-			frmVortex.setBounds(100, 100, 500 + (intBoardSize - 3) * 62, 300 + (intBoardSize - 3) * 62);
+			frmVortex.getContentPane().setPreferredSize(new Dimension(508 + (intBoardSize - 3) * 62, 280 + (intBoardSize - 3) * 62));
 		}
 		frmVortex.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 		frmVortex.getContentPane().setLayout(null);
+		frmVortex.pack();
+		frmVortex.setLocationRelativeTo(null);
 		
 		/* Scoreboard Initialization */
 		strUsername = GetUserName();
