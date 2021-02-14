@@ -9,6 +9,8 @@ import javax.swing.JButton;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import java.awt.Font;
+import java.awt.Toolkit;
+
 import javax.swing.SwingConstants;
 import javax.swing.UnsupportedLookAndFeelException;
 
@@ -394,11 +396,11 @@ public class Vortex {
 	public static void infoBox(String infoMessage, String titleBar, String player) {
 		ImageIcon icon = null;
 		if (player == "X") {
-			icon = new ImageIcon(Vortex.class.getResource("Images/Win.png"));
+			icon = new ImageIcon(Vortex.class.getResource("resources/graphics/Win.png"));
 		} else if (player == "O") {
-			icon = new ImageIcon(Vortex.class.getResource("Images/Loss.png"));
+			icon = new ImageIcon(Vortex.class.getResource("resources/graphics/Loss.png"));
 		} else if (player == "T") {
-			icon = new ImageIcon(Vortex.class.getResource("Images/Tie.png"));
+			icon = new ImageIcon(Vortex.class.getResource("resources/graphics/Tie.png"));
 		}
         JOptionPane.showMessageDialog(null, infoMessage, titleBar, JOptionPane.INFORMATION_MESSAGE, icon);
     }
@@ -456,6 +458,7 @@ public class Vortex {
 		frmVortex = new JFrame();
 		frmVortex.setResizable(false);
 		frmVortex.setTitle("Vortex");
+		frmVortex.setIconImage(Toolkit.getDefaultToolkit().getImage(Vortex.class.getResource("resources/graphics/Icon.png")));
 		if (intBoardSize < 3) {
 			frmVortex.getContentPane().setPreferredSize(new Dimension(508 + (intBoardSize - 3) * 62, 280));
 		} else {
