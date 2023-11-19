@@ -42,7 +42,7 @@ final class GridBox extends JLabel {
 }
 
 public class Vortex {
-	private static int intBoardSize = 3;
+	private static int intBoardSize = 4;
 	private static String[][] strBoard = new String[intBoardSize][intBoardSize];
 	private static String strUsername;
 	private static boolean boolGameon;
@@ -521,7 +521,8 @@ public class Vortex {
 			buttons[bctr].setBorder(BorderFactory.createLineBorder(Color.BLACK, 2));
 			buttons[bctr].addMouseListener(new MouseAdapter() {
 				@Override
-				public void mouseClicked(MouseEvent e) {
+				public void mousePressed(MouseEvent e) {
+					// Changed from 'mouseClick', as this required the cursor to not move between being pressed and released to trigger the event.
 					GridBox source = (GridBox) e.getSource();
 					UserMove(source.intID);
 				}
