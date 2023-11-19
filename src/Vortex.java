@@ -42,8 +42,10 @@ final class GridBox extends JLabel {
 }
 
 public class Vortex {
-	private static int intBoardSize = 4;
+	private static int intBoardSize = 3;
 	private static String[][] strBoard = new String[intBoardSize][intBoardSize];
+	private static Color myGreen = new Color(88, 214, 141);
+	private static Color myBlue = new Color(41, 128, 185);
 	private static String strUsername;
 	private static boolean boolGameon;
 	private static int intVScore;
@@ -55,7 +57,7 @@ public class Vortex {
 	private static JLabel lblTitle;
 	private static JLabel lblSubheading;
 	private static GridBox[] buttons = new GridBox[intBoardSize * intBoardSize];
-	private static JLabel lblScoreboard;
+	//private static JLabel lblScoreboard;
 	private static JLabel lblVortex;
 	private static JLabel lblUser;
 	private static JLabel lblVScore;
@@ -245,12 +247,13 @@ public class Vortex {
 	}
 	
 	public static void BoardPlace(String player, int index) {
-		Color myMagenta = new Color(227, 39, 120);
-		Color myBlue = new Color(39, 164, 227);
+		//Color myMagenta = new Color(227, 39, 120);
+		//Color myBlue = new Color(39, 164, 227);
 		
 		buttons[index].setText(player);
 		if (player == "X") {
-			buttons[index].setForeground(myMagenta);
+			//buttons[index].setForeground(myMagenta);
+			buttons[index].setForeground(myGreen);
 		} else {
 			buttons[index].setForeground(myBlue);
 		}
@@ -485,17 +488,20 @@ public class Vortex {
 		
 		lblVScore = new JLabel("0");
 		lblVScore.setFont(new Font("Lucida Grande", Font.BOLD, 30));
+		lblVScore.setForeground(myBlue);
 		lblVScore.setHorizontalAlignment(SwingConstants.CENTER);
 		lblVScore.setBounds(6, 46, 128, 39);
 		panel.add(lblVScore);
 		
 		lblUScore = new JLabel("0");
 		lblUScore.setFont(new Font("Lucida Grande", Font.BOLD, 30));
+		lblUScore.setForeground(myGreen);
 		lblUScore.setHorizontalAlignment(SwingConstants.CENTER);
 		lblUScore.setBounds(132, 46, 128, 39);
 		panel.add(lblUScore);
 		
 		btnResetScoreboard = new JButton("Reset Scoreboard");
+		btnResetScoreboard.setFont(new Font("Lucida Grande", Font.BOLD, 16));
 		btnResetScoreboard.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
 				ResetGame(false);
@@ -532,6 +538,7 @@ public class Vortex {
 		
 		/* New Game Buttons */
 		btnNewGame = new JButton("New Game");
+		btnNewGame.setFont(new Font("Lucida Grande", Font.BOLD, 20));
 		btnNewGame.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
 				btnNewGame.setVisible(false);
@@ -544,6 +551,7 @@ public class Vortex {
 		frmVortex.getContentPane().add(btnNewGame);
 		
 		btnFirst = new JButton("Go First");
+		btnFirst.setFont(new Font("Lucida Grande", Font.BOLD, 16));
 		btnFirst.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
 				lblPossibilities.setText("Possible Games: " + Integer.toString(PossibleGames(strBoard, true)));
@@ -555,6 +563,7 @@ public class Vortex {
 		frmVortex.getContentPane().add(btnFirst);
 		
 		btnSecond = new JButton("Go Second");
+		btnSecond.setFont(new Font("Lucida Grande", Font.BOLD, 16));
 		btnSecond.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
 				lblPossibilities.setText("Possible Games: " + Integer.toString(PossibleGames(strBoard, false)));
@@ -566,11 +575,11 @@ public class Vortex {
 		frmVortex.getContentPane().add(btnSecond);
 		
 		/* Other Labels */
-		lblScoreboard = new JLabel("SCOREBOARD");
-		lblScoreboard.setFont(new Font("Lucida Grande", Font.BOLD, 13));
-		lblScoreboard.setHorizontalAlignment(SwingConstants.CENTER);
-		lblScoreboard.setBounds(6, 6, 254 , 16);
-		panel.add(lblScoreboard);
+		//lblScoreboard = new JLabel("SCOREBOARD");
+		//lblScoreboard.setFont(new Font("Lucida Grande", Font.BOLD, 13));
+		//lblScoreboard.setHorizontalAlignment(SwingConstants.CENTER);
+		//lblScoreboard.setBounds(6, 6, 254 , 16);
+		//panel.add(lblScoreboard);
 		
 		lblVortex = new JLabel("Vortex");
 		lblVortex.setHorizontalAlignment(SwingConstants.CENTER);
