@@ -1,6 +1,9 @@
-# Exclude Compiled Binaries
+# Exclude compiled binaries
 bin/
 
-# Exclude macOS attribute/meta-data files
+# Exclude Photoshop files for application screenshots
+application_screenshots/*.psd
+
+# Exclude macOS attribute files
 **/.DS_Store
 

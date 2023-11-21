@@ -1,504 +1,455 @@
 import java.awt.Color;
 import java.awt.Dimension;
-import java.awt.EventQueue;
+import java.awt.Font;
+import java.awt.Toolkit;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
+import java.awt.event.ActionListener;
+import java.awt.event.ActionEvent;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.ThreadLocalRandom;
 import javax.swing.JOptionPane;
 import javax.swing.ImageIcon;
 import javax.swing.JFrame;
 import javax.swing.BorderFactory;
 import javax.swing.JButton;
 import javax.swing.JLabel;
+import javax.swing.JMenu;
+import javax.swing.JMenuBar;
+import javax.swing.JMenuItem;
 import javax.swing.JPanel;
-import java.awt.Font;
-import java.awt.Toolkit;
-
 import javax.swing.SwingConstants;
-import javax.swing.UnsupportedLookAndFeelException;
-
-import java.awt.event.MouseAdapter;
-import java.awt.event.MouseEvent;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.concurrent.ThreadLocalRandom;
-import java.awt.event.ActionListener;
-import java.awt.event.ActionEvent;
-
-final class CellGrid {
-    public int x;
-    public int y;
- 
-    public CellGrid(int x, int y) {
-        this.x = x;
-        this.y = y;
-    }
-}
-
-final class GridBox extends JLabel {
-	private static final long serialVersionUID = 7197962877418899056L;
-	public int intID;
-	
-	public GridBox(int i) {
-		this.intID = i;
-	}
-}
 
 public class Vortex {
-	private static int intBoardSize = 3;
-	private static String[][] strBoard = new String[intBoardSize][intBoardSize];
-	private static Color myGreen = new Color(88, 214, 141);
-	private static Color myBlue = new Color(41, 128, 185);
-	private static String strUsername;
-	private static boolean boolGameon;
-	private static int intVScore;
-	private static int intUScore;
-	private static int intDepth = 1;
+	// Settings
+	private int board_size = 3;												// Grid length and width.
+	private int win_length = 3;												// Winning sequence length.
+	private Color user_colour = new Color(88, 214, 141);					// User's colour.
+	private Color vortex_colour = new Color(41, 128, 185);					// Vortex's colour.
+	private String username;												// User's username.
+	private boolean find_remaining_games = false;							// Find number of remaining games?
+	private String user_symbol = "X";										// User's symbol.
+	private String vortex_symbol = "O";										// Vortex's symbol.
 	
+	// Game Variables
+	private String[][] game_board = new String[board_size][board_size];		// Game board state.
+	private boolean game_running;											// Is the game not over?
+	private int vortex_score;												// Vortex's score.
+	private int user_score;													// User's score.
+	
+	// Window Elements
+	private About about_window;												// Instance of 'About'.
+	private boolean about_open = false;										// 'About' window open?
+	
+	// GUI Elements
 	private JFrame frmVortex;
-	private static JPanel panel;
-	private static JLabel lblTitle;
-	private static JLabel lblSubheading;
-	private static GridBox[] buttons = new GridBox[intBoardSize * intBoardSize];
-	//private static JLabel lblScoreboard;
-	private static JLabel lblVortex;
-	private static JLabel lblUser;
-	private static JLabel lblVScore;
-	private static JLabel lblUScore;
-	private static JButton btnFirst;
-	private static JButton btnSecond;
-	private static JButton btnNewGame;
-	private static JButton btnResetScoreboard;
-	private static JLabel lblPossibilities;
-	private static JLabel lblAuthor;
+	private JPanel panel;
+	private JLabel lblTitle;
+	private JLabel lblSubheading;
+	private GridBox[] buttons = new GridBox[board_size * board_size];
+	private JLabel lblVortex;
+	private JLabel lblUser;
+	private JLabel lblVortexScore;
+	private JLabel lblUserScore;
+	private JButton btnFirst;
+	private JButton btnSecond;
+	private JButton btnNewGame;
+	private JButton btnResetScoreboard;
+	private JLabel lblPossibilities;
+	private JLabel lblAuthor;
 	
-	/* Launch the application. */
-	public static void main(String[] args) {
-		EventQueue.invokeLater(new Runnable() {
-			public void run() {
-				// Set Nimbus Look and Feel
-				boolean boolNimbus = false;
-				for (javax.swing.UIManager.LookAndFeelInfo info : javax.swing.UIManager.getInstalledLookAndFeels()) {
-					if ("Nimbus".equals(info.getName())) {
-						try {
-							javax.swing.UIManager.setLookAndFeel(info.getClassName());
-						} catch (ClassNotFoundException | InstantiationException | IllegalAccessException
-								| UnsupportedLookAndFeelException e) {
-							JOptionPane.showMessageDialog(null, "Could not start the application with the preferred look and feel.\nUsing system defaults.", "Vortex", JOptionPane.ERROR_MESSAGE, null);
-						}
-						
-						boolNimbus = true;
-				        break;
-					}
-			    }
-				
-				if (!boolNimbus) {
-					JOptionPane.showMessageDialog(null, "Could not start the application with the preferred look and feel.\nUsing system defaults.", "Vortex", JOptionPane.ERROR_MESSAGE, null);
-				}
-				
-				try {
-					Vortex window = new Vortex();
-					window.frmVortex.setVisible(true);
-				} catch (Exception e) {
-					JOptionPane.showMessageDialog(null, "Could not start the application. Exiting.", "Vortex", JOptionPane.ERROR_MESSAGE, null);
-					System.exit(1);
-				}
-			}
-		});
+	// Create object.
+	public Vortex() {
+		Initialise();
 	}
 	
-	public static void UserMove(int index) {
-		CellGrid position = TransformCG(index);
+	// Called when the user clicks on a cell on the game board.
+	private void UserMove(int linear_index) {
+		CartesianCell cartesian_user_move = CartesianCell.ToCartesian(linear_index, board_size);
 		
-		if ((strBoard[position.x][position.y] == "") && boolGameon==true) {
-			strBoard[position.x][position.y] = "X";
-			BoardPlace("X", index);
+		// Register the user's move only if the game is not over and the move is valid.
+		if (game_running && (game_board[cartesian_user_move.GetX()][cartesian_user_move.GetY()].equals(""))) {
+			game_board[cartesian_user_move.GetX()][cartesian_user_move.GetY()] = user_symbol;
+			PlaceMoveUI(user_symbol, linear_index);
 			
-			lblPossibilities.setText("Possible Games: " + Integer.toString(PossibleGames(strBoard, false)));
-			CheckWin();
+			// Calculate the remaining number of possible games.
+			if (find_remaining_games) {
+				UpdatePossibleGames(false);
+			}
 			
-			if (boolGameon) {
-				AIMove();
+			// Check if the game was won/tied.
+			game_running = !CheckWin();
+			
+			if (game_running) {
+				// Respond with the computer's move.
+				ComputerMove();
+				
+				// Check if the game was won/tied.
+				game_running = !CheckWin();
 			}
 		}
 	}
 	
-	public static int TransformGC (int x, int y) {
-		return (intBoardSize*y)+x;
-	}
-	
-	public static CellGrid TransformCG(int i) {
-		int x = 0;
-		int y = 0;
+	// Check if a player has won or tied the game.
+	private boolean CheckWin() {
+		// Check if the game has ended.
+		String WinState = new GameplayStatus(board_size, win_length, game_board).CheckStatus();
 		
-		x = (i % intBoardSize);
-		y = (i - x)/intBoardSize;
-		
-		return new CellGrid(x,y);
-	}
-	
-	public static void CheckWin() {
-		String result = CheckWinLogic();
-		
-		if (result != "") {
-			lblPossibilities.setText("Possible Games: 0");
-			
-			if (result == "X") {
-				infoBox(strUsername + " wins this round!","Vortex", "X");
-				intUScore++;
-			} else if (result == "O") {
-				infoBox("Vortex wins this round!","Vortex", "O");
-				intVScore++;
-			} else if (result == "T") {
-				infoBox("It's a tie!","Vortex", "T");
-				intVScore++;
-				intUScore++;
+		if (!WinState.equals("")) {
+			// Update possibilities label.
+			if (find_remaining_games) {
+				lblPossibilities.setText("Possible Games: 0");
 			}
 			
+			if (WinState.equals(user_symbol)) {
+				infoBox(username + " wins this round!", "Vortex", "User");
+				user_score++;
+			} else if (WinState.equals(vortex_symbol)) {
+				infoBox("Vortex wins this round!", "Vortex", "Vortex");
+				vortex_score++;
+			} else if (WinState.equals("T")) {
+				infoBox("It's a tie!", "Vortex", "Tie");
+			}
+			
+			// Update user interface elements.
+			lblVortexScore.setText(Integer.toString(vortex_score));
+			lblUserScore.setText(Integer.toString(user_score));
 			btnNewGame.setVisible(true);
 			btnFirst.setVisible(false);
 			btnSecond.setVisible(false);
 			btnFirst.setEnabled(true);
 			btnSecond.setEnabled(true);
 			btnResetScoreboard.setEnabled(true);
-			lblVScore.setText(Integer.toString(intVScore));
-			lblUScore.setText(Integer.toString(intUScore));
-			boolGameon = false;
 		}
+		
+		return (!WinState.equals(""));
 	}
 	
-	public static String CheckEqual(String[] strCombination) {
-		String result = "";
-		boolean boolMatch = true;
-		
-		if (strCombination[0] != "") {
-			for(int ctrB = 1; ctrB < strCombination.length; ctrB++) {
-				if (strCombination[ctrB-1] != strCombination[ctrB]) {
-					boolMatch = false;
-				}
-			}
+	// Places a move on the GUI.
+	private void PlaceMoveUI(String player_symbol, int index) {
+		buttons[index].setText(player_symbol);
+		if (player_symbol.equals(user_symbol)) {
+			buttons[index].setForeground(user_colour);
 		} else {
-			boolMatch = false;
-		}
-		
-		if (!boolMatch) {
-			result = "";
-		} else {
-			result = strCombination[0];
-		}
-		
-		return result;
-	}
-	
-	public static String CheckWinLogic() { /* "X", "O", "T", "" */
-		String result = "";
-		boolean boolFound = false;
-		boolean boolTie = true;
-		String[] strComb = new String[intBoardSize];
-		
-		/* Horizontal & Vertical Checks */
-		for(int ctrChk = 0; ctrChk < 2; ctrChk++) {
-			for(int ctrY = 0; ctrY < intBoardSize; ctrY++) {
-				for(int ctrX = 0; ctrX < intBoardSize; ctrX++) {
-					if (!boolFound) {
-						if (ctrChk == 0) {
-							strComb[ctrX] = strBoard[ctrX][ctrY];
-						} else {
-							strComb[ctrX] = strBoard[ctrY][ctrX];
-						}
-					}
-				}
-				if ((!boolFound) && (CheckEqual(strComb)) != "") {
-					boolFound = true;
-					result = CheckEqual(strComb);
-				}
-			}
-		}
-		
-		/* Diagonal Checks */
-		for(int ctrChk = 0; ctrChk < 2; ctrChk++) {
-			for(int ctrD = 0; ctrD < intBoardSize; ctrD++) {
-				if (!boolFound) {
-					if (ctrChk == 0) {
-						strComb[ctrD] = strBoard[ctrD][ctrD];
-					} else {
-						strComb[ctrD] = strBoard[(intBoardSize - 1) - ctrD][ctrD];
-					}
-				}
-			}
-			if ((!boolFound) && (CheckEqual(strComb)) != "") {
-				boolFound = true;
-				result = CheckEqual(strComb);
-			}
-		}
-		
-		/* Tie Check */
-		if (!boolFound) {
-			for(int ctrY = 0; ctrY < intBoardSize; ctrY++) {
-				for(int ctrX = 0; ctrX < intBoardSize; ctrX++) {
-					if (strBoard[ctrX][ctrY] == "") {
-						boolTie = false;
-					}
-				}
-			}
-			if (boolTie) {
-				result = "T";
-			}
-		}
-		
-		return result;
-	}
-	
-	public static void BoardPlace(String player, int index) {
-		//Color myMagenta = new Color(227, 39, 120);
-		//Color myBlue = new Color(39, 164, 227);
-		
-		buttons[index].setText(player);
-		if (player == "X") {
-			//buttons[index].setForeground(myMagenta);
-			buttons[index].setForeground(myGreen);
-		} else {
-			buttons[index].setForeground(myBlue);
+			buttons[index].setForeground(vortex_colour);
 		}
 	}
 	
-	public static int PossibleGames(String[][] T, boolean turn) {
-		int xctr = 0;
-		int yctr = 0;
-		int sum = 0;
-		String WinState = "";
+	// Plays the computer's move.
+	private void ComputerMove() {
+		List<Integer> legal_moves = new ArrayList<>();
+		List<String[][]> legal_subsequent_game_states = new ArrayList<>();
+		int[][] scores = new int[board_size][board_size];
+		List<Integer> best_moves = new ArrayList<>();
+		List<Future<Integer>> minimax_threads_results = null;
+		CartesianCell best_move;
+		int top_score = Integer.MIN_VALUE;
+		int random_best_move_index = 0;
 		
-		for(yctr = 0; yctr < intBoardSize; yctr++){ 
-			for(xctr = 0; xctr < intBoardSize; xctr++){  
-				if (T[xctr][yctr] == "") {
-					if (!turn) {
-						T[xctr][yctr] = "O";
-					} else {
-						T[xctr][yctr] = "X";
-					}
-					WinState = CheckWinLogic();
-					if (WinState != "") {
-						sum++;
-						T[xctr][yctr] = "";
-					} else {
-						turn = !turn;
-						sum = sum + PossibleGames(T, turn);
-						T[xctr][yctr] = "";
-						turn = !turn;
-					}
-				}
+		// Initialise the scores array.
+		for (int y_counter = 0; y_counter < board_size; y_counter++) {
+			for (int x_counter = 0; x_counter < board_size; x_counter++) {
+				scores[x_counter][y_counter] = Integer.MIN_VALUE;
 			}
 		}
 		
-		return sum;
-	}
-	
-	public static int AIEngine(String[][] T, boolean turn) {
-		int xctr = 0;
-		int yctr = 0;
-		String WinState = "";
-		ArrayList<Integer> list = new ArrayList<Integer>();
-		
-		for(yctr = 0; yctr < intBoardSize; yctr++){ 
-			for(xctr = 0; xctr < intBoardSize; xctr++){  
-				if (T[xctr][yctr] == "") {
-					if (!turn) {
-						T[xctr][yctr] = "O";
-					} else {
-						T[xctr][yctr] = "X";
-					}
-					WinState = CheckWinLogic();
-					if (WinState == "X") {
-						list.add(intDepth - ((intBoardSize * intBoardSize) + 1));
-						T[xctr][yctr] = "";
-					} else if (WinState == "O") {
-						list.add(((intBoardSize * intBoardSize) + 1) - intDepth);
-						T[xctr][yctr] = "";
-					} else if (WinState == "T") {
-						list.add(0);
-						T[xctr][yctr] = "";
-					} else {
-						turn = !turn;
-						intDepth++;
-						list.add(AIEngine(T, turn));
-						intDepth--;
-						T[xctr][yctr] = "";
-						turn = !turn;
-					}
-				}
-			}
-		}
-		if (turn) {
-			return Collections.min(list);
-		} else {
-			return Collections.max(list);
-		}
-	}
-	
-	public static void AIMove() {
-		int[][] intarrScores = new int[intBoardSize][intBoardSize];
-		CellGrid ctrCellGrid = new CellGrid(0,0);
-		int intTopScore = -((intBoardSize * intBoardSize) + 1);
-		int intRandom = 0;
-		int ctrBestMoves = 0;
-		int intBestMoves[] = new int[intBoardSize * intBoardSize];
-		
-		for(ctrCellGrid.y = 0; ctrCellGrid.y < intBoardSize; ctrCellGrid.y++){ 
-			for(ctrCellGrid.x = 0; ctrCellGrid.x < intBoardSize; ctrCellGrid.x++){ 
-				if (strBoard[ctrCellGrid.x][ctrCellGrid.y] == "") {
-					strBoard[ctrCellGrid.x][ctrCellGrid.y] = "O";
+		// Store all legal subsequent game states.
+		for (int y_counter = 0; y_counter < board_size; y_counter++) {
+			for (int x_counter = 0; x_counter < board_size; x_counter++) {
+				if (game_board[x_counter][y_counter].equals("")) {
 					
-					/* Check if the move wins, looses or draws immediately
-					 * (since the AIEngine places a move before checking) */
-					if (CheckWinLogic() == "O") {
-						intarrScores[ctrCellGrid.x][ctrCellGrid.y] = (intBoardSize * intBoardSize) + 1;		/* Not subject to depth penalty */
-					} else if (CheckWinLogic() == "X") {
-						intarrScores[ctrCellGrid.x][ctrCellGrid.y] = -((intBoardSize * intBoardSize) + 1);	/* Not subject to depth penalty */
-					} else if (CheckWinLogic() == "T") {
-						intarrScores[ctrCellGrid.x][ctrCellGrid.y] = 0;
-					} else {
-						intarrScores[ctrCellGrid.x][ctrCellGrid.y] = AIEngine(strBoard, true);
-					}
-					strBoard[ctrCellGrid.x][ctrCellGrid.y] = "";
+					// Store the move played
+					legal_moves.add(new CartesianCell(x_counter, y_counter, board_size).GetLinearIndex());
+					
+					// Make a copy of the game state.
+					String[][] newGameState = new String[board_size][];
+					for (int copy_counter = 0; copy_counter < board_size; copy_counter++) {
+						newGameState[copy_counter] = new String[board_size];
+						System.arraycopy(game_board[copy_counter], 0, newGameState[copy_counter], 0, board_size);
+			        }
+					
+					// Play the move on the copy of the game state.
+					newGameState[x_counter][y_counter] = vortex_symbol;
+					
+					// Store the copy of the game state.
+					legal_subsequent_game_states.add(newGameState);
 				}
 			}
 		}
 		
-		ctrCellGrid.x = 0;
-		ctrCellGrid.y = 0;
+		// Prepare multi-threading variables.
+		//ExecutorService executor_service = Executors.newCachedThreadPool();
+		ExecutorService executor_service = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
+		List<Callable<Integer>> tasks = new ArrayList<Callable<Integer>>();
 		
-		/* Find the top score */
-		for(ctrCellGrid.y = 0; ctrCellGrid.y < intBoardSize; ctrCellGrid.y++){ 
-			for(ctrCellGrid.x = 0; ctrCellGrid.x < intBoardSize; ctrCellGrid.x++){ 
-				if ((strBoard[ctrCellGrid.x][ctrCellGrid.y] == "") && (intarrScores[ctrCellGrid.x][ctrCellGrid.y] >= intTopScore)) {
-					intTopScore = intarrScores[ctrCellGrid.x][ctrCellGrid.y];
+		// Obtain a score for each possible move at a depth of zero.
+		for (int move_counter = 0; move_counter < legal_subsequent_game_states.size(); move_counter++) {			
+			// Add the task.
+			// Note: Objects (but not primitives) are added to ArrayLists by reference.
+			// This is why distinct copies of each legal subsequent game state are required.
+			tasks.add(new Minimax_Thread(legal_subsequent_game_states.get(move_counter), true, 1, Integer.MIN_VALUE, Integer.MAX_VALUE, board_size, win_length, user_symbol, vortex_symbol));
+		}
+		
+		// Run all tasks in parallel and wait for all tasks to complete.
+		try {
+			minimax_threads_results = executor_service.invokeAll(tasks);
+		} catch (InterruptedException e) {
+			//e.printStackTrace();
+			JOptionPane.showMessageDialog(null, "An error occurred while invoking the multithreaded minimax engine.\nVortex will now exit.", "Vortex", JOptionPane.ERROR_MESSAGE, null);
+			System.exit(1);
+		}
+		
+		// Make the ExecutorService stop accepting new tasks and shut down after all running threads finish their work.
+		executor_service.shutdown();
+		
+		// Store results from the threads.
+		for (int counter = 0; counter < legal_moves.size(); counter++) {
+			try {
+				scores[CartesianCell.ToCartesian(legal_moves.get(counter), board_size).GetX()][CartesianCell.ToCartesian(legal_moves.get(counter), board_size).GetY()] = minimax_threads_results.get(counter).get();
+			} catch (InterruptedException | ExecutionException e) {
+				//e.printStackTrace();
+				JOptionPane.showMessageDialog(null, "An error occurred while running the multithreaded minimax engine.\nVortex will now exit.", "Vortex", JOptionPane.ERROR_MESSAGE, null);
+				System.exit(1);
+			}
+		}
+		
+		// Vortex aims to maximise the score.
+		for (int y_counter = 0; y_counter < board_size; y_counter++) {
+			for (int x_counter = 0; x_counter < board_size; x_counter++) {
+				if (scores[x_counter][y_counter] > top_score) {
+					top_score = scores[x_counter][y_counter];
 				}
 			}
 		}
 		
-		ctrCellGrid.x = 0;
-		ctrCellGrid.y = 0;
+		// Print the scores (debugging)
+		/*
+		for (int y_counter = 0; y_counter < board_size; y_counter++) {
+			for (int x_counter = 0; x_counter < board_size; x_counter++) {
+				if (x_counter == board_size - 1) {
+					System.out.printf("%8d", scores[x_counter][y_counter]);
+				} else {
+					System.out.printf("%8d", scores[x_counter][y_counter]);
+					System.out.print("\t" + " | " + "\t");
+				}
+			}
+			System.out.println();
+		}
+		System.out.println("\n---------------- NEXT MOVE ----------------\n");
+		*/
 		
-		/* Store move(s) that result in the top score */
-		for(ctrCellGrid.y = 0; ctrCellGrid.y < intBoardSize; ctrCellGrid.y++){ 
-			for(ctrCellGrid.x = 0; ctrCellGrid.x < intBoardSize; ctrCellGrid.x++){ 
-				if ((strBoard[ctrCellGrid.x][ctrCellGrid.y] == "") && (intarrScores[ctrCellGrid.x][ctrCellGrid.y] == intTopScore)) {
-					intBestMoves[ctrBestMoves] = TransformGC(ctrCellGrid.x,ctrCellGrid.y);
-					ctrBestMoves++;
+		// Find move(s) that result in the top score.
+		for (int y_counter = 0; y_counter < board_size; y_counter++) {
+			for (int x_counter = 0; x_counter < board_size; x_counter++) {
+				if (scores[x_counter][y_counter] == top_score) {
+					best_moves.add(new CartesianCell(x_counter, y_counter, board_size).GetLinearIndex());
 				}
 			}
 		}
 		
-		/* If there are multiple equally good moves, choose one randomly */
-		intRandom = ThreadLocalRandom.current().nextInt(0, ctrBestMoves);
-		ctrCellGrid = TransformCG(intBestMoves[intRandom]);
-		strBoard[ctrCellGrid.x][ctrCellGrid.y] = "O";
-		BoardPlace("O", intBestMoves[intRandom]);
-		lblPossibilities.setText("Possible Games: " + Integer.toString(PossibleGames(strBoard, true)));
+		// If there are multiple equally good moves, choose one randomly.
+		random_best_move_index = ThreadLocalRandom.current().nextInt(0, best_moves.size()); // Note: Upper bound is exclusive.
+		best_move = CartesianCell.ToCartesian(best_moves.get(random_best_move_index), board_size);
 		
-		CheckWin();
+		// Play the chosen move.
+		game_board[best_move.GetX()][best_move.GetY()] = vortex_symbol;
+		PlaceMoveUI(vortex_symbol, best_move.GetLinearIndex());
+		
+		// Calculate the remaining number of possible games.
+		if (find_remaining_games) {
+			UpdatePossibleGames(true);
+		}
 	}
 	
-	public static void infoBox(String infoMessage, String titleBar, String player) {
+	private void infoBox(String infoMessage, String titleBar, String player) {
 		ImageIcon icon = null;
-		if (player == "X") {
-			icon = new ImageIcon(Vortex.class.getResource("resources/graphics/Win.png"));
-		} else if (player == "O") {
-			icon = new ImageIcon(Vortex.class.getResource("resources/graphics/Loss.png"));
-		} else if (player == "T") {
-			icon = new ImageIcon(Vortex.class.getResource("resources/graphics/Tie.png"));
+		if (player.equals("User")) {
+			icon = new ImageIcon(Vortex.class.getResource("resources/graphics/win.png"));
+		} else if (player.equals("Vortex")) {
+			icon = new ImageIcon(Vortex.class.getResource("resources/graphics/loss.png"));
+		} else if (player.equals("Tie")) {
+			icon = new ImageIcon(Vortex.class.getResource("resources/graphics/tie.png"));
 		}
         JOptionPane.showMessageDialog(null, infoMessage, titleBar, JOptionPane.INFORMATION_MESSAGE, icon);
     }
 	
-	public static String GetUserName() {
+	private String GetUserName() {
 		return System.getProperty("user.name");
 	}
 	
-	public static void ResetGame(boolean fullreset) {
+	private void ResetGame(boolean fullreset) {
 		int ctrb = 0;
 		int ctrx = 0;
 		int ctry = 0;
 		
-		/* Clear the game scores */
+		// Clear the game scores.
 		if (!fullreset) {
-			intUScore = 0;
-			intVScore = 0;
-			lblVScore.setText("0");
-			lblUScore.setText("0");
+			user_score = 0;
+			vortex_score = 0;
+			lblVortexScore.setText("0");
+			lblUserScore.setText("0");
 		} else {
-			intDepth = 1;
-			lblPossibilities.setText("");
+			if (find_remaining_games) {
+				lblPossibilities.setText("");
+			}
 			
-			/* Clear the board */
-			for(ctrb = 0; ctrb < (intBoardSize*intBoardSize); ctrb++){
+			// Clear the board.
+			for(ctrb = 0; ctrb < (board_size * board_size); ctrb++){
 				buttons[ctrb].setText("");
 			}
 			
-			/* Initialize the 2D board array */
-			for(ctrx = 0; ctrx < intBoardSize; ctrx++){  
-				for(ctry = 0; ctry < intBoardSize; ctry++){ 
-					strBoard[ctrx][ctry] = "";
+			// Initialise the 2D board array.
+			for(ctrx = 0; ctrx < board_size; ctrx++){  
+				for(ctry = 0; ctry < board_size; ctry++){ 
+					game_board[ctrx][ctry] = "";
 				}
 			}
 		}
 	}
 	
-	public static void StartGame(boolean first) {
+	private void UpdatePossibleGames(boolean user_plays_first) {
+		// Prepare and execute calculation of number of possible remaining games.
+		ExecutorService executor_service = Executors.newFixedThreadPool(1);
+		PossibleRemainingGames_Thread possible_games = new PossibleRemainingGames_Thread(game_board, user_plays_first, board_size, win_length, user_symbol, vortex_symbol);
+		Future<Integer> future_number_possible_games = executor_service.submit(possible_games);
+		int number_possible_games = 0;
+		try {
+			// Display number of remaining possible games
+			number_possible_games = future_number_possible_games.get();
+			lblPossibilities.setText("Possible Games: " + Integer.toString(number_possible_games));
+		} catch (InterruptedException | ExecutionException e) {
+			//e.printStackTrace();
+			JOptionPane.showMessageDialog(null, "An error occurred while calculating the number of remaining possible games.", "Vortex", JOptionPane.ERROR_MESSAGE, null);
+			lblPossibilities.setText("");
+		}
+	}
+	
+	private void StartGame(boolean user_plays_first) {
+		// Set game running flag.
+		game_running = true;
+		
+		// Update GUI elements.
 		btnFirst.setEnabled(false);
 		btnSecond.setEnabled(false);
 		btnResetScoreboard.setEnabled(false);
-		boolGameon = true;
-		if (!first) {
-			AIMove();
+		
+		if (!user_plays_first) {
+			// Computer plays a move.
+			ComputerMove();
+			
+			// Check if the game was won/tied.
+			game_running = !CheckWin();
+		} else {
+			// Calculate the remaining number of possible games.
+			if (find_remaining_games) {
+				UpdatePossibleGames(user_plays_first);
+			}
 		}
 	}
 
-	/* Create the application */
-	public Vortex() {
-		initialize();
-	}
-
-	/* Initialize the contents of the frame */
-	private void initialize() {
+	// Initialise the instance of Vortex.
+	private void Initialise() {		
+		// Prepare menu bar.
+		JMenuBar menu_bar = new JMenuBar();
+		JMenu file_menu = new JMenu("File");
+		JMenu help_menu = new JMenu("Help");
+		
+        // Menu items.
+		JMenuItem menu_about = new JMenuItem("About");
+		menu_about.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				if (!about_open) {
+					about_open = true;
+					about_window = new About();
+					about_window.addWindowListener(new WindowAdapter() { 
+					    @Override public void windowClosed(WindowEvent e) { 
+					    	about_open = false;
+					    }
+					});
+					about_window.setVisible(true);
+				} else {
+					about_window.requestFocus();
+				}
+			}
+		});
+		
+		JMenuItem menu_exit = new JMenuItem("Exit");
+		menu_exit.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				System.exit(0); 
+			}
+		});
+        
+        // Add about to help menu.
+		help_menu.add(menu_about);
+		
+		// Add size and exit to file menu.
+        file_menu.add(menu_exit);
+        
+        // Add file and help menus to menu bar.
+        menu_bar.add(file_menu);
+        menu_bar.add(help_menu);
+		
+        // Prepare JFrame.
 		frmVortex = new JFrame();
 		frmVortex.setResizable(false);
 		frmVortex.setTitle("Vortex");
-		frmVortex.setIconImage(Toolkit.getDefaultToolkit().getImage(Vortex.class.getResource("resources/graphics/Icon.png")));
-		if (intBoardSize < 3) {
-			frmVortex.getContentPane().setPreferredSize(new Dimension(508 + (intBoardSize - 3) * 62, 280));
+		frmVortex.setJMenuBar(menu_bar);
+		frmVortex.setIconImage(Toolkit.getDefaultToolkit().getImage(Vortex.class.getResource("resources/graphics/icon.png")));
+		if (board_size < 3) {
+			frmVortex.getContentPane().setPreferredSize(new Dimension(508 + (board_size - 3) * 62, 280));
 		} else {
-			frmVortex.getContentPane().setPreferredSize(new Dimension(508 + (intBoardSize - 3) * 62, 280 + (intBoardSize - 3) * 62));
+			frmVortex.getContentPane().setPreferredSize(new Dimension(508 + (board_size - 3) * 62, 280 + (board_size - 3) * 62));
 		}
 		frmVortex.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 		frmVortex.getContentPane().setLayout(null);
 		frmVortex.pack();
 		frmVortex.setLocationRelativeTo(null);
 		
-		/* Scoreboard Initialization */
-		strUsername = GetUserName();
+		// Scoreboard initialisation.
+		username = GetUserName();
 		panel = new JPanel();
 		panel.setBorder(null);
-		panel.setBounds(220 + (intBoardSize - 3) * 62, 130, 267, 85);
+		if (board_size >= 3) {
+			panel.setBounds(220 + (board_size - 3) * 62, 130 + (board_size - 3) * 62, 267, 85);
+		} else {
+			panel.setBounds(220 + (board_size - 3) * 62, 130, 267, 85);
+		}
 		frmVortex.getContentPane().add(panel);
 		panel.setLayout(null);
+		
+		lblVortex = new JLabel("Vortex");
+		lblVortex.setHorizontalAlignment(SwingConstants.CENTER);
+		lblVortex.setBounds(6, 29, 128, 16);
+		panel.add(lblVortex);
 		
 		lblUser = new JLabel("User");
 		lblUser.setHorizontalAlignment(SwingConstants.CENTER);
 		lblUser.setBounds(132, 29, 128, 16);
-		lblUser.setText(strUsername);
+		lblUser.setText(username);
 		panel.add(lblUser);
 		
-		lblVScore = new JLabel("0");
-		lblVScore.setFont(new Font("Lucida Grande", Font.BOLD, 30));
-		lblVScore.setForeground(myBlue);
-		lblVScore.setHorizontalAlignment(SwingConstants.CENTER);
-		lblVScore.setBounds(6, 46, 128, 39);
-		panel.add(lblVScore);
+		lblVortexScore = new JLabel("0");
+		lblVortexScore.setFont(new Font("Lucida Grande", Font.BOLD, 30));
+		lblVortexScore.setForeground(vortex_colour);
+		lblVortexScore.setHorizontalAlignment(SwingConstants.CENTER);
+		lblVortexScore.setBounds(6, 46, 128, 39);
+		panel.add(lblVortexScore);
 		
-		lblUScore = new JLabel("0");
-		lblUScore.setFont(new Font("Lucida Grande", Font.BOLD, 30));
-		lblUScore.setForeground(myGreen);
-		lblUScore.setHorizontalAlignment(SwingConstants.CENTER);
-		lblUScore.setBounds(132, 46, 128, 39);
-		panel.add(lblUScore);
+		lblUserScore = new JLabel("0");
+		lblUserScore.setFont(new Font("Lucida Grande", Font.BOLD, 30));
+		lblUserScore.setForeground(user_colour);
+		lblUserScore.setHorizontalAlignment(SwingConstants.CENTER);
+		lblUserScore.setBounds(132, 46, 128, 39);
+		panel.add(lblUserScore);
 		
 		btnResetScoreboard = new JButton("Reset Scoreboard");
 		btnResetScoreboard.setFont(new Font("Lucida Grande", Font.BOLD, 16));
@@ -507,36 +458,36 @@ public class Vortex {
 				ResetGame(false);
 			}
 		});
-		if (intBoardSize < 3) {
-			btnResetScoreboard.setBounds(220 + (intBoardSize - 3) * 62, panel.getY() + panel.getHeight() + 5, 267, 35);
+		if (board_size < 3) {
+			btnResetScoreboard.setBounds(220 + (board_size - 3) * 62, panel.getY() + panel.getHeight() + 5, 267, 35);
 		} else {
-			btnResetScoreboard.setBounds(220 + (intBoardSize - 3) * 62, 92 + ((intBoardSize - 1) * 62), 267, 35);
+			btnResetScoreboard.setBounds(220 + (board_size - 3) * 62, 92 + ((board_size - 1) * 62), 267, 35);
 		}
 		frmVortex.getContentPane().add(btnResetScoreboard);
 		
 		ResetGame(false);
 		
-		/* The Tic-Tac-Toe Buttons */
+		// Tic-Tac-Toe buttons.
 		int bctr = 0;
 		
-		for(bctr = 0; bctr < (intBoardSize * intBoardSize); bctr++){ 
+		for(bctr = 0; bctr < (board_size * board_size); bctr++){ 
 			buttons[bctr] = new GridBox(bctr);
 			buttons[bctr].setHorizontalAlignment(SwingConstants.CENTER);
 			buttons[bctr].setFont(new Font("Lucida Grande", Font.BOLD, 40));
-			buttons[bctr].setBounds((25 + (62 * TransformCG(bctr).x)), (77 + (62 * TransformCG(bctr).y)), 50, 50);
+			buttons[bctr].setBounds((25 + (62 * CartesianCell.ToCartesian(bctr, board_size).GetX())), (77 + (62 * CartesianCell.ToCartesian(bctr, board_size).GetY())), 50, 50);
 			buttons[bctr].setBorder(BorderFactory.createLineBorder(Color.BLACK, 2));
 			buttons[bctr].addMouseListener(new MouseAdapter() {
 				@Override
 				public void mousePressed(MouseEvent e) {
 					// Changed from 'mouseClick', as this required the cursor to not move between being pressed and released to trigger the event.
 					GridBox source = (GridBox) e.getSource();
-					UserMove(source.intID);
+					UserMove(source.GetIndex());
 				}
 			});
 			frmVortex.getContentPane().add(buttons[bctr]);
 		}
 		
-		/* New Game Buttons */
+		// New game buttons.
 		btnNewGame = new JButton("New Game");
 		btnNewGame.setFont(new Font("Lucida Grande", Font.BOLD, 20));
 		btnNewGame.addActionListener(new ActionListener() {
@@ -547,67 +498,57 @@ public class Vortex {
 				ResetGame(true);
 			}
 		});
-		btnNewGame.setBounds(220 + (intBoardSize - 3) * 62, 77, 267, 50);
+		btnNewGame.setBounds(220 + (board_size - 3) * 62, 77, 267, 50);
 		frmVortex.getContentPane().add(btnNewGame);
 		
 		btnFirst = new JButton("Go First");
-		btnFirst.setFont(new Font("Lucida Grande", Font.BOLD, 16));
+		btnFirst.setFont(new Font("Lucida Grande", Font.BOLD, 15));
 		btnFirst.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
-				lblPossibilities.setText("Possible Games: " + Integer.toString(PossibleGames(strBoard, true)));
 				StartGame(true);
 			}
 		});
-		btnFirst.setBounds(220 + (intBoardSize - 3) * 62, 77, 117, 50);
+		btnFirst.setBounds(220 + (board_size - 3) * 62, 77, 117, 50);
 		btnFirst.setVisible(false);
 		frmVortex.getContentPane().add(btnFirst);
 		
 		btnSecond = new JButton("Go Second");
-		btnSecond.setFont(new Font("Lucida Grande", Font.BOLD, 16));
+		btnSecond.setFont(new Font("Lucida Grande", Font.BOLD, 15));
 		btnSecond.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
-				lblPossibilities.setText("Possible Games: " + Integer.toString(PossibleGames(strBoard, false)));
 				StartGame(false);
 			}
 		});
-		btnSecond.setBounds(369 + (intBoardSize - 3) * 62, 77, 117, 50);
+		btnSecond.setBounds(369 + (board_size - 3) * 62, 77, 117, 50);
 		btnSecond.setVisible(false);
 		frmVortex.getContentPane().add(btnSecond);
 		
-		/* Other Labels */
-		//lblScoreboard = new JLabel("SCOREBOARD");
-		//lblScoreboard.setFont(new Font("Lucida Grande", Font.BOLD, 13));
-		//lblScoreboard.setHorizontalAlignment(SwingConstants.CENTER);
-		//lblScoreboard.setBounds(6, 6, 254 , 16);
-		//panel.add(lblScoreboard);
-		
-		lblVortex = new JLabel("Vortex");
-		lblVortex.setHorizontalAlignment(SwingConstants.CENTER);
-		lblVortex.setBounds(6, 29, 128, 16);
-		panel.add(lblVortex);
-		
+		// Other labels.
 		lblTitle = new JLabel("VORTEX");
 		lblTitle.setFont(new Font("Lucida Grande", Font.BOLD, 45));
 		lblTitle.setHorizontalAlignment(SwingConstants.CENTER);
-		lblTitle.setBounds(6, 0, 488 + (intBoardSize - 3) * 62, 62);
+		lblTitle.setBounds(6, 0, 488 + (board_size - 3) * 62, 62);
 		frmVortex.getContentPane().add(lblTitle);
 		
-		lblSubheading = new JLabel("A Perfect Recursion-Based Tic-Tac-Toe AI");
+		lblSubheading = new JLabel("A Minimax-Based Tic-Tac-Toe AI");
 		lblSubheading.setHorizontalAlignment(SwingConstants.CENTER);
-		lblSubheading.setBounds(6, 52, 488 + (intBoardSize - 3) * 62, 16);
+		lblSubheading.setBounds(6, 52, 488 + (board_size - 3) * 62, 16);
 		frmVortex.getContentPane().add(lblSubheading);
 		
 		lblPossibilities = new JLabel("");
-		lblPossibilities.setBounds(25, 70 + (intBoardSize * 62), 176, 16);
+		lblPossibilities.setBounds(25, 70 + (board_size * 62), 176, 16);
 		frmVortex.getContentPane().add(lblPossibilities);
 		
 		lblAuthor = new JLabel("By Rohan Barar, 2019");
 		lblAuthor.setHorizontalAlignment(SwingConstants.TRAILING);
-		if (intBoardSize < 3) {
-			lblAuthor.setBounds(327 + (intBoardSize - 3) * 62, btnResetScoreboard.getY() + btnResetScoreboard.getHeight() + 1, 160, 16);
+		if (board_size < 3) {
+			lblAuthor.setBounds(327 + (board_size - 3) * 62, btnResetScoreboard.getY() + btnResetScoreboard.getHeight() + 1, 160, 16);
 		} else {
-			lblAuthor.setBounds(327 + (intBoardSize - 3) * 62, 256 + (intBoardSize - 3) * 62, 160, 16);
+			lblAuthor.setBounds(327 + (board_size - 3) * 62, 256 + (board_size - 3) * 62, 160, 16);
 		}
 		frmVortex.getContentPane().add(lblAuthor);
+		
+		// Make visible.
+		frmVortex.setVisible(true);
 	}
 }
